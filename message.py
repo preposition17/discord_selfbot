@@ -1,3 +1,4 @@
+import re
 from datetime import datetime
 
 from .api import Api
@@ -31,6 +32,15 @@ class Message:
     @property
     def raw(self):
         return self._message_data
+
+    @property
+    def text(self) -> str:
+        text = self.content
+        user_pattern = "<@[0-9]+>"
+        user_ids = re.findall(user_pattern, text)
+        for user_id in user_ids:
+            text = text.replace(user_id, self.api.get_user(user_id[2:-1]).fullname)
+        return text
 
     @property
     def channel_id(self):
