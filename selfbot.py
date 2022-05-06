@@ -44,6 +44,7 @@ class SelfBot:
                                on_error=self._on_ws_error,
                                on_close=self._on_ws_close)
 
+        self.debug = False
         self.ping_loop_active = False
         self.identified = False
 
@@ -61,29 +62,10 @@ class SelfBot:
             return
 
         ws_message = self.inflator.decompress(self.buffer)
-        ws_message = WsMessage(self._to_json(ws_message))
+        ws_message = WsMessage.from_json(self._to_json(ws_message))
         self.buffer = bytearray()
 
-        if ws_message.op == 10:
-            if not self.identified:
-                self._identify()
-                self.identified = True
-            if not self.ping_loop_active:
-                self.heartbeat_interval = ws_message.data["heartbeat_interval"]
-                self._start_ping()
-                self.identified = True
-            if self.identified and self.ping_loop_active:
-                print("Ping!")
-                self._send_message({
-                "op": 1,
-                "d": self.ping_data + random.randint(5, 10)
-            })
-
-        if ws_message.op == 0:
-            if ws_message.title == "MESSAGE_CREATE":
-                # print(ws_message.data)
-                self._iter_message_handlers(Message(ws_message.data, self.api))
-
+        self._ws_message_handler(ws_message)
         self.on_ws_message(ws_message)
 
     def _on_ws_error(self, ws, error):
@@ -99,13 +81,16 @@ class SelfBot:
     def _to_json(self, data: Union[bytes, bytearray]):
         return json.loads(data.decode("utf-8"))
 
+    def _send_ping(self, ping_data_inc=0):
+        self._send_message({
+            "op": 1,
+            "d": self.ping_data + ping_data_inc
+        })
+
     def _ping_loop(self):
         time.sleep(5)
         while True:
-            self._send_message({
-                "op": 1,
-                "d": self.ping_data
-            })
+            self._send_ping()
             self.ping_data += random.randint(17, 23)
             time.sleep(self.heartbeat_interval * random.uniform(0, 1) / 1000)
 
@@ -119,6 +104,27 @@ class SelfBot:
 
     def _send_message(self, data: dict):
         self.ws.send(json.dumps(data))
+
+    def _ws_message_handler(self, ws_message):
+        if self.debug:
+            print(ws_message._message_data)
+
+        if ws_message.op == 10:
+            if not self.identified:
+                self._identify()
+                self.identified = True
+            if not self.ping_loop_active:
+                self.heartbeat_interval = ws_message.data["heartbeat_interval"]
+                self._start_ping()
+                self.ping_loop_active = True
+
+        if ws_message.op == 1:
+            self._send_ping(random.randint(5, 10))
+
+        if ws_message.op == 0:
+            if ws_message.title == "MESSAGE_CREATE":
+                self._iter_message_handlers(Message(ws_message.data, self.api))
+
 
     def on_ws_message(self, message):
         """
@@ -136,14 +142,24 @@ class SelfBot:
         """
         self.message_handlers.append(MessageHandler(callback, **kwargs))
 
+    def message_handler(self, callback, **kwargs):
+        """
+        As "add_message_handler", but decorator
+        :param callback: your callback function
+        :param kwargs: kwargs for callback
+        """
+        self.message_handlers.append(MessageHandler(callback, **kwargs))
+
+
     def _iter_message_handlers(self, message):
         for handler in self.message_handlers:
-            handler.callback(message, **handler.kwargs)
+            handler.execute(message)
 
-    def run(self):
+    def run(self, debug=False):
         """
         Run the Discord websocket client
         """
+        self.debug = debug
         self.ws.run_forever(dispatcher=rel)
         rel.signal(2, rel.abort)
         rel.dispatch()

@@ -7,6 +7,7 @@ from .config import Config
 
 from .guild import Guild
 from .channel import Channel
+from .user import User
 
 
 class Api(Session):
@@ -84,3 +85,9 @@ class Api(Session):
         :return: discord_selfbot.Channel
         """
         return Channel(self.get(f"/channels/{channel_id}"))
+
+    def get_me(self):
+        return User(self.get("/users/@me"))
+
+    def get_user(self, user_id):
+        return User(self.get(f"/users/{user_id}"))

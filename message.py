@@ -4,6 +4,7 @@ from .api import Api
 
 from .channel import Channel
 from .guild import Guild
+from .user import User
 
 
 class Message:
@@ -17,13 +18,12 @@ class Message:
 
         self._message_data = message_data
         self.time = datetime.fromisoformat(self._message_data["timestamp"])
-        self.author_name = self._message_data["author"]["username"]
-        self.author_discriminator = self._message_data["author"]["discriminator"]
-        self.author = f"{self.author_name}#{self.author_discriminator}"
         self.content = self._message_data["content"]
 
         if self._message_data["attachments"]:
             self.attachments = [attachment["url"] for attachment in self._message_data["attachments"]]
+
+        self.author = User(self._message_data["author"])
 
         self._guild = None
         self._channel = None
