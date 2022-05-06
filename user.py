@@ -6,3 +6,7 @@ class User:
         self.username = self._user_data["id"]
         self.discriminator = self._user_data["discriminator"]
         self.fullname = f"{self.username}@{self.discriminator}"
+
+    @property
+    def raw(self):
+        return self._user_data
