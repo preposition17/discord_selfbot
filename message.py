@@ -29,6 +29,10 @@ class Message:
         self._channel = None
 
     @property
+    def raw(self):
+        return self._message_data
+
+    @property
     def channel(self) -> Channel:
         """
         Get Channel instance of message
