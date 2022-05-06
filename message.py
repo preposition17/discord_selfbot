@@ -33,6 +33,14 @@ class Message:
         return self._message_data
 
     @property
+    def channel_id(self):
+        return self._message_data["channel_id"]
+
+    @property
+    def guild_id(self):
+        return self._message_data["guild_id"]
+
+    @property
     def channel(self) -> Channel:
         """
         Get Channel instance of message
